@@ -1,0 +1,68 @@
+TranslateGemma has been deployed!
+
+  Release name : {{ .Release.Name }}
+  Namespace    : {{ .Release.Namespace }}
+
+------------------------------------------------------------------
+Accessing the Web UI
+------------------------------------------------------------------
+
+{{- if .Values.ingress.enabled }}
+  Via Ingress:
+  {{- range .Values.ingress.hosts }}
+    http{{ if $.Values.ingress.tls }}s{{ end }}://{{ .host }}/
+  {{- end }}
+
+{{- else if eq .Values.service.type "NodePort" }}
+  export NODE_PORT=$(kubectl get svc {{ include "translategemma.fullname" . }} \
+    -n {{ .Release.Namespace }} \
+    -o jsonpath='{.spec.ports[0].nodePort}')
+  export NODE_IP=$(kubectl get nodes \
+    -o jsonpath='{.items[0].status.addresses[0].address}')
+  echo "http://${NODE_IP}:${NODE_PORT}"
+
+{{- else if eq .Values.service.type "LoadBalancer" }}
+  NOTE: It may take a few minutes for the LoadBalancer IP to become available.
+  export SERVICE_IP=$(kubectl get svc {{ include "translategemma.fullname" . }} \
+    -n {{ .Release.Namespace }} \
+    -o jsonpath='{.status.loadBalancer.ingress[0].ip}')
+  echo "http://${SERVICE_IP}:{{ .Values.service.port }}"
+
+{{- else }}
+  Port-forward to access the UI locally:
+  kubectl port-forward svc/{{ include "translategemma.fullname" . }} \
+    -n {{ .Release.Namespace }} \
+    8080:{{ .Values.service.port }}
+  Open http://localhost:8080 in your browser.
+{{- end }}
+
+------------------------------------------------------------------
+Offline / Air-gapped usage
+------------------------------------------------------------------
+
+  - Set offline=true to disable all HuggingFace Hub download attempts.
+  - Pre-populate the model PVC before first startup:
+
+    kubectl cp /local/path/to/models \
+      {{ .Release.Namespace }}/$(kubectl get pod -l \
+        app.kubernetes.io/instance={{ .Release.Name }} \
+        -n {{ .Release.Namespace }} \
+        -o jsonpath='{.items[0].metadata.name}'):/root/.cache/translate/
+
+  - Override the image registry for air-gapped clusters:
+
+    helm upgrade {{ .Release.Name }} ./helm/translategemma \
+      --set image.registry=my-registry.local:5000 \
+      --set image.pullPolicy=IfNotPresent \
+      --set offline=true
+
+------------------------------------------------------------------
+GPU acceleration (NVIDIA)
+------------------------------------------------------------------
+
+    helm upgrade {{ .Release.Name }} ./helm/translategemma \
+      --set gpu.enabled=true \
+      --set gpu.count=1 \
+      --set image.tag=cuda
+
+------------------------------------------------------------------

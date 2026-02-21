@@ -1,0 +1,149 @@
+# ---------------------------------------------------------------------------
+# TranslateGemma Helm Chart – default values
+#
+# OFFLINE / AIR-GAPPED DEPLOYMENT
+# --------------------------------
+# 1. Pre-load the Docker image onto every node (or into your local registry).
+# 2. Set image.pullPolicy: Never (or IfNotPresent) below.
+# 3. Override image.registry / image.repository to point to your private
+#    registry if you are not using the default image name.
+# 4. Set offline: true so the app skips any HuggingFace Hub calls.
+# 5. Mount pre-downloaded model files via persistence settings.
+# ---------------------------------------------------------------------------
+
+# ---------------------------------------------------------------------------
+# Image settings
+# ---------------------------------------------------------------------------
+image:
+  # Override registry for air-gapped environments, e.g. "my-registry.local:5000"
+  registry: ""
+  repository: translategemma
+  tag: "latest"
+  # Use "Never" for air-gapped clusters where the image is pre-loaded on nodes.
+  # Use "IfNotPresent" for private registries.
+  pullPolicy: IfNotPresent
+
+imagePullSecrets: []
+
+# ---------------------------------------------------------------------------
+# Application settings
+# ---------------------------------------------------------------------------
+replicaCount: 1
+
+# When offline: true the app uses only the local model cache and disables
+# HuggingFace Hub download attempts.
+offline: false
+
+config:
+  modelSize: "27b"          # 4b | 12b | 27b
+  backend: "auto"           # auto | mlx | pytorch | vllm | ollama
+  outputMode: "direct"      # direct | explain
+  languages:
+    - "yue"
+    - "en"
+  maxTokens: 512
+
+env:
+  # Additional environment variables to inject into the container.
+  # Useful for HF_HOME, HF_HUB_OFFLINE, CUDA_VISIBLE_DEVICES, etc.
+  # Example:
+  #   - name: HF_HUB_OFFLINE
+  #     value: "1"
+  extra: []
+
+# ---------------------------------------------------------------------------
+# Service
+# ---------------------------------------------------------------------------
+service:
+  type: ClusterIP
+  port: 80
+  targetPort: 8080
+  # Set to NodePort or LoadBalancer for direct external access without Ingress.
+  # nodePort: 30080
+
+# ---------------------------------------------------------------------------
+# Ingress
+# ---------------------------------------------------------------------------
+ingress:
+  enabled: false
+  className: ""
+  annotations: {}
+    # kubernetes.io/ingress.class: nginx
+    # cert-manager.io/cluster-issuer: letsencrypt-prod
+  hosts:
+    - host: translategemma.local
+      paths:
+        - path: /
+          pathType: Prefix
+  tls: []
+  # - secretName: translategemma-tls
+  #   hosts:
+  #     - translategemma.local
+
+# ---------------------------------------------------------------------------
+# Persistence (model cache volume)
+# ---------------------------------------------------------------------------
+persistence:
+  enabled: true
+  # storageClass: ""   # Leave empty to use the cluster default.
+  # Set to a pre-existing PVC name to reuse an existing volume.
+  existingClaim: ""
+  size: 50Gi
+  accessModes:
+    - ReadWriteOnce
+  mountPath: /root/.cache/translate
+
+# ---------------------------------------------------------------------------
+# Resources
+# This app loads large neural-network models; set limits to match your nodes.
+# ---------------------------------------------------------------------------
+resources:
+  requests:
+    cpu: "2"
+    memory: "8Gi"
+  limits:
+    cpu: "8"
+    memory: "32Gi"
+
+# GPU (NVIDIA)
+gpu:
+  enabled: false
+  # Number of GPU devices to request.
+  count: 1
+
+# ---------------------------------------------------------------------------
+# Probes
+# ---------------------------------------------------------------------------
+livenessProbe:
+  httpGet:
+    path: /api/health
+    port: 8080
+  initialDelaySeconds: 60
+  periodSeconds: 30
+  failureThreshold: 3
+
+readinessProbe:
+  httpGet:
+    path: /api/health
+    port: 8080
+  initialDelaySeconds: 30
+  periodSeconds: 10
+  failureThreshold: 6
+
+# ---------------------------------------------------------------------------
+# Pod settings
+# ---------------------------------------------------------------------------
+podAnnotations: {}
+podSecurityContext: {}
+securityContext: {}
+nodeSelector: {}
+tolerations: []
+affinity: {}
+
+serviceAccount:
+  create: false
+  name: ""
+  annotations: {}
+
+nameOverride: ""
+fullnameOverride: ""

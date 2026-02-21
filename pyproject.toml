@@ -51,6 +51,12 @@ cuda = [
 cpu = [
     "torch>=2.0.0,<3.0",
 ]
+# Web UI server
+web = [
+    "fastapi>=0.100.0,<1.0",
+    "uvicorn[standard]>=0.23.0,<1.0",
+    "python-multipart>=0.0.6",
+]
 # Development dependencies
 dev = [
     "pytest>=7.0.0,<9.0",
@@ -61,6 +67,7 @@ dev = [
 
 [project.scripts]
 translate = "translategemma_cli.cli:app"
+translate-web = "translategemma_cli.web:main"
 
 [project.urls]
 "Homepage" = "https://github.com/jhkchan/translategemma-cli"
@@ -68,6 +75,9 @@ translate = "translategemma_cli.cli:app"
 [tool.setuptools.packages.find]
 where = ["."]
 include = ["translategemma_cli*"]
+
+[tool.setuptools.package-data]
+translategemma_cli = ["static/*"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

@@ -1,0 +1,16 @@
+apiVersion: v2
+name: translategemma
+description: >
+  Helm chart for TranslateGemma – an offline-capable neural translation
+  web UI backed by Google's TranslateGemma models.
+type: application
+version: 0.1.0
+appVersion: "0.1.0"
+keywords:
+  - translation
+  - nlp
+  - ai
+  - offline
+home: https://github.com/jhkchan/translategemma-cli
+maintainers:
+  - name: Jacky Chan
